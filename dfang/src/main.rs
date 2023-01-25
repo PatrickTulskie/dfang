@@ -19,10 +19,10 @@ lazy_static! {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() == 0 {
+    if args.len() < 2 {
         help();
     } else {
-        for i in 0..args.len() {
+        for i in 1..args.len() {
             println!("{}", defang(&args[i]));
         }
     }
