@@ -1,2 +1,2 @@
 [workspace]
-members=["defangify", "refangify"]
+members=["dfang", "rfang"]

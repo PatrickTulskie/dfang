@@ -1,10 +1,13 @@
-# Defangify
+# dfang
 
-Defangify IOCs (ips, emails, urls, etc)
+Defang IOCs (ips, emails, urls, etc)
 
 ## Usage
 
-```defangify something@somewhere.com```
+```
+dfang something@somewhere.com
+rfang something[@]somewhere[.]com
+```
 
 ## Notes
 

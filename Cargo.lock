@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "defangify"
+name = "dfang"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
@@ -32,14 +32,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
-name = "refangify"
-version = "0.1.0"
-dependencies = [
- "lazy_static",
- "regex",
-]
-
-[[package]]
 name = "regex"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -55,3 +47,11 @@ name = "regex-syntax"
 version = "0.6.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
+
+[[package]]
+name = "rfang"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
+]
