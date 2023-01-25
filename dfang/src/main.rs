@@ -18,24 +18,33 @@ lazy_static! {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let first_email = &args[1];
-    let defangged = defangify(first_email);
-    println!("{}", defangged);
+
+    if args.len() == 0 {
+        help();
+    } else {
+        for i in 0..args.len() {
+            println!("{}", defang(&args[i]));
+        }
+    }
 }
 
-fn defangify(input: &str) -> String {
+fn help() {
+    println!("usage: dfang <string>")
+}
+
+fn defang(input: &str) -> String {
     if IPV4_REGEX.is_match(input) {
         return defang_ipv4(input);
     } else if IPV6_REGEX.is_match(input) {
         return defang_ipv6(input);
     } else if EMAIL_REGEX.is_match(input) {
-        return defangify_email(input)
+        return defang_email(input)
     } else {
-        return defangify_url(input);
+        return defang_url(input);
     }
 }
 
-fn defangify_url(input: &str) -> String {
+fn defang_url(input: &str) -> String {
     let no_dots = DOTS_REGEX.replace_all(input, "[.]");
     let no_http = HTTP_REGEX.replace_all(&no_dots, "hxxp");
     let no_slashes = SLASHES_REGEX.replace_all(&no_http, "[://]");
@@ -55,7 +64,7 @@ fn defang_ipv6(input: &str) -> String {
     return no_colons.to_string();
 }
 
-fn defangify_email(input: &str) -> String {
+fn defang_email(input: &str) -> String {
     let no_dots = DOTS_REGEX.replace_all(input, "[.]");
     let no_at = AT_REGEX.replace_all(&no_dots, "[@]");
 

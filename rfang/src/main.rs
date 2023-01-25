@@ -13,11 +13,21 @@ lazy_static! {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let refangged = refangify(&args[1]);
-    println!("{}", refangged);
+
+    if args.len() == 0 {
+        help();
+    } else {
+        for i in 0..args.len() {
+            println!("{}", refang(&args[i]));
+        }
+    }
 }
 
-fn refangify(input: &str) -> String {
+fn help() {
+    println!("usage: dfang <string>")
+}
+
+fn refang(input: &str) -> String {
     let fanged_dots = DOTS_REGEX.replace_all(input, ".");
     let fanged_http = HXXP_REGEX.replace_all(&fanged_dots, "http");
     let fanged_slashes = SLASHES_REGEX.replace_all(&fanged_http, "://");
