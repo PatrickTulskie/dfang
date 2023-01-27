@@ -1,6 +1,6 @@
 [package]
 name = "rfang"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Patrick Tulskie <patricktulskie@gmail.com>"]
 license = "MIT"
 description = "A tool to refang IOCs."
