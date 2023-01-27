@@ -1,6 +1,9 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
+use std::io;
+use std::io::Read;
+extern crate atty;
 
 lazy_static! {
     // Replacers
@@ -20,7 +23,16 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        help();
+        let mut input = String::new();
+        if !atty::is(atty::Stream::Stdin) {
+            // read input from pipe
+            io::stdin().read_to_string(&mut input).unwrap();
+            for line in input.lines() {
+                println!("{}", defang(line));
+            }
+        } else {
+            help();
+        }
     } else {
         for i in 1..args.len() {
             println!("{}", defang(&args[i]));

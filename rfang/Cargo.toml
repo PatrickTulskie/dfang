@@ -14,3 +14,4 @@ edition = "2021"
 [dependencies]
 regex = "1"
 lazy_static = "1"
+atty = "0.2.*"
