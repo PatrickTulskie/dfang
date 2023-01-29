@@ -82,3 +82,17 @@ fn defang_email(input: &str) -> String {
 
     return no_at.to_string();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_defang() {
+        assert_eq!(defang("http://example.com"), "hxxp[://]example[.]com");
+        assert_eq!(defang("https://example.com"), "hxxps[://]example[.]com");
+        assert_eq!(defang("example@example.com"), "example[@]example[.]com");
+        assert_eq!(defang("2001:0db8:85a3:0000:0000:8a2e:0370:7334"), "2001[:]0db8[:]85a3[:]0000[:]0000[:]8a2e[:]0370[:]7334");
+        assert_eq!(defang("192.168.1.1"), "192[.]168[.]1[.]1")
+    }
+}

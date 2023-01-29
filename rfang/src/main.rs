@@ -36,7 +36,7 @@ fn main() {
 }
 
 fn help() {
-    println!("usage: dfang <string>")
+    println!("usage: rfang <string>")
 }
 
 fn refang(input: &str) -> String {
@@ -49,3 +49,16 @@ fn refang(input: &str) -> String {
     return fanged_colons.to_string();
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_refang() {
+        assert_eq!(refang("hxxp[://]example[.]com"), "http://example.com");
+        assert_eq!(refang("hxxps[://]example[.]com"), "https://example.com");
+        assert_eq!(refang("example[@]example[.]com"), "example@example.com");
+        assert_eq!(refang("2001[:]0db8[:]85a3[:]0000[:]0000[:]8a2e[:]0370[:]7334"), "2001:0db8:85a3:0000:0000:8a2e:0370:7334");
+        assert_eq!(refang("192[.]168[.]1[.]1"), "192.168.1.1")
+    }
+}
