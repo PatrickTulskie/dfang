@@ -57,30 +57,30 @@ fn defang(input: &str) -> String {
 }
 
 fn defang_url(input: &str) -> String {
-    let no_dots = DOTS_REGEX.replace_all(input, "[.]");
-    let no_http = HTTP_REGEX.replace_all(&no_dots, "hxxp");
-    let no_slashes = SLASHES_REGEX.replace_all(&no_http, "[://]");
+    let mut result = input.to_string();
 
-    return no_slashes.to_string();
+    result = DOTS_REGEX.replace_all(&result, "[.]").to_string();
+    result = HTTP_REGEX.replace_all(&result, "hxxp").to_string();
+    result = SLASHES_REGEX.replace_all(&result, "[://]").to_string();
+
+    return result;
 }
 
 fn defang_ipv4(input: &str) -> String {
-    let no_dots = DOTS_REGEX.replace_all(input, "[.]");
-
-    return no_dots.to_string();
+    return DOTS_REGEX.replace_all(input, "[.]").to_string();
 }
 
 fn defang_ipv6(input: &str) -> String {
-    let no_colons = COLONS_REGEX.replace_all(input, "[:]");
-
-    return no_colons.to_string();
+    return COLONS_REGEX.replace_all(input, "[:]").to_string();
 }
 
 fn defang_email(input: &str) -> String {
-    let no_dots = DOTS_REGEX.replace_all(input, "[.]");
-    let no_at = AT_REGEX.replace_all(&no_dots, "[@]");
+    let mut result = input.to_string();
 
-    return no_at.to_string();
+    result = DOTS_REGEX.replace_all(&result, "[.]").to_string();
+    result = AT_REGEX.replace_all(&result, "[@]").to_string();
+
+    return result;
 }
 
 #[cfg(test)]

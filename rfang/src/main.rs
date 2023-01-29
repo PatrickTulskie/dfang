@@ -40,13 +40,15 @@ fn help() {
 }
 
 fn refang(input: &str) -> String {
-    let fanged_dots = DOTS_REGEX.replace_all(input, ".");
-    let fanged_http = HXXP_REGEX.replace_all(&fanged_dots, "http");
-    let fanged_slashes = SLASHES_REGEX.replace_all(&fanged_http, "://");
-    let fanged_ats = AT_REGEX.replace_all(&fanged_slashes, "@");
-    let fanged_colons = COLONS_REGEX.replace_all(&fanged_ats, ":");
+    let mut result = input.to_string();
 
-    return fanged_colons.to_string();
+    result = DOTS_REGEX.replace_all(&result, ".").to_string();
+    result = HXXP_REGEX.replace_all(&result, "http").to_string();
+    result = SLASHES_REGEX.replace_all(&result, "://").to_string();
+    result = AT_REGEX.replace_all(&result, "@").to_string();
+    result = COLONS_REGEX.replace_all(&result, ":").to_string();
+
+    return result;
 }
 
 #[cfg(test)]
