@@ -5,6 +5,8 @@ use std::io;
 use std::io::Read;
 extern crate atty;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 lazy_static! {
     // Replacers
     static ref DOTS_REGEX: Regex = Regex::new(r"\[\.\]").unwrap();
@@ -36,7 +38,8 @@ fn main() {
 }
 
 fn help() {
-    println!("usage: rfang <string>")
+    println!("rfang v{}", VERSION);
+    println!("usage: rfang <string>");
 }
 
 fn refang(input: &str) -> String {
