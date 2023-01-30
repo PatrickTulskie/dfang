@@ -1,6 +1,6 @@
 [package]
 name = "dfang"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Patrick Tulskie <patricktulskie@gmail.com>"]
 license = "MIT"
 description = "A tool to defang IOCs."
