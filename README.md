@@ -1,6 +1,8 @@
-# dfang
+![dfang](doc/img/dfang_logo.png)
 
-Defang IOCs (ips, emails, urls, etc)
+## Intro
+
+For when you need to quickly make IOCs (email, urls, ip addresses) unclickable and safe to send, just send them through `dfang`. If you receive something that's been defanged and you need to give it some teeth again, just run it back through `rfang`.
 
 ## Install
 
