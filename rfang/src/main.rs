@@ -1,9 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
-use std::io;
-use std::io::Read;
-extern crate atty;
+use std::io::{self, Read, IsTerminal};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -21,7 +19,7 @@ fn main() {
 
     if args.len() < 2 {
         let mut input = String::new();
-        if !atty::is(atty::Stream::Stdin) {
+        if !io::stdin().is_terminal() {
             // read input from pipe
             io::stdin().read_to_string(&mut input).unwrap();
             for line in input.lines() {
