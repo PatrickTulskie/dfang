@@ -36,7 +36,7 @@ fn help() {
 /// unconditionally would chew through prose like "Contact: me" or "C:/tmp".
 fn defang(input: &str) -> String {
     let result = input.replace('.', "[.]");
-    let result = replace_ignore_ascii_case(&result, "http", "hxxp");
+    let result = replace_preserving_ascii_case(&result, "http", "hxxp");
     let mut result = result.replace("://", "[://]");
 
     if has_email(input) {
@@ -74,8 +74,11 @@ fn bracket_bare_colons(input: &str) -> String {
     return out;
 }
 
-/// Non-overlapping, leftmost replacement of an ASCII `needle`, ignoring case.
-fn replace_ignore_ascii_case(haystack: &str, needle: &str, to: &str) -> String {
+/// Non-overlapping, leftmost replacement of an ASCII `needle` of the same
+/// length as `to`. Matching ignores case and each character written keeps the
+/// case of the one it replaced, so "HTTP" becomes "HXXP" and a later refang
+/// can hand back exactly what it was given.
+fn replace_preserving_ascii_case(haystack: &str, needle: &str, to: &str) -> String {
     let (bytes, pat) = (haystack.as_bytes(), needle.as_bytes());
     let mut out = String::with_capacity(haystack.len());
     let mut copied = 0;
@@ -84,7 +87,9 @@ fn replace_ignore_ascii_case(haystack: &str, needle: &str, to: &str) -> String {
     while i + pat.len() <= bytes.len() {
         if bytes[i..i + pat.len()].eq_ignore_ascii_case(pat) {
             out.push_str(&haystack[copied..i]);
-            out.push_str(to);
+            for (&from, &to) in bytes[i..i + pat.len()].iter().zip(to.as_bytes()) {
+                out.push(if from.is_ascii_uppercase() { to.to_ascii_uppercase() } else { to } as char);
+            }
             i += pat.len();
             copied = i;
         } else {
@@ -230,10 +235,12 @@ mod tests {
         assert_eq!(defang("192.168.1.1"), "192[.]168[.]1[.]1")
     }
 
+    /// The scheme is matched regardless of case and rewritten in the case it
+    /// arrived in, so nothing is lost on the way back through rfang.
     #[test]
     fn test_defang_is_case_insensitive() {
-        assert_eq!(defang("HTTP://EXAMPLE.COM"), "hxxp[://]EXAMPLE[.]COM");
-        assert_eq!(defang("Http://Example.Com"), "hxxp[://]Example[.]Com");
+        assert_eq!(defang("HTTP://EXAMPLE.COM"), "HXXP[://]EXAMPLE[.]COM");
+        assert_eq!(defang("Http://Example.Com"), "Hxxp[://]Example[.]Com");
     }
 
     #[test]
@@ -316,7 +323,7 @@ mod tests {
     fn test_defang_replaces_every_occurrence() {
         assert_eq!(defang("httphttp://a.com"), "hxxphxxp[://]a[.]com");
         assert_eq!(defang("http://a.com/redir?u=http://b.com"), "hxxp[://]a[.]com/redir?u=hxxp[://]b[.]com");
-        assert_eq!(defang("HtTpS://MiXeD.CoM"), "hxxpS[://]MiXeD[.]CoM");
+        assert_eq!(defang("HtTpS://MiXeD.CoM"), "HxXpS[://]MiXeD[.]CoM");
     }
 
     #[test]
@@ -326,14 +333,16 @@ mod tests {
     }
 
     #[test]
-    fn test_replace_ignore_ascii_case() {
-        assert_eq!(replace_ignore_ascii_case("http", "http", "hxxp"), "hxxp");
-        assert_eq!(replace_ignore_ascii_case("HTTP", "http", "hxxp"), "hxxp");
-        assert_eq!(replace_ignore_ascii_case("a http b HTTP c", "http", "hxxp"), "a hxxp b hxxp c");
-        assert_eq!(replace_ignore_ascii_case("", "http", "hxxp"), "");
-        assert_eq!(replace_ignore_ascii_case("htt", "http", "hxxp"), "htt");
+    fn test_replace_preserving_ascii_case() {
+        assert_eq!(replace_preserving_ascii_case("http", "http", "hxxp"), "hxxp");
+        assert_eq!(replace_preserving_ascii_case("HTTP", "http", "hxxp"), "HXXP");
+        assert_eq!(replace_preserving_ascii_case("Http", "http", "hxxp"), "Hxxp");
+        assert_eq!(replace_preserving_ascii_case("HtTp", "http", "hxxp"), "HxXp");
+        assert_eq!(replace_preserving_ascii_case("a http b HTTP c", "http", "hxxp"), "a hxxp b HXXP c");
+        assert_eq!(replace_preserving_ascii_case("", "http", "hxxp"), "");
+        assert_eq!(replace_preserving_ascii_case("htt", "http", "hxxp"), "htt");
         // The copy offsets are byte indices, so they have to land on char
         // boundaries when a match sits between multibyte characters.
-        assert_eq!(replace_ignore_ascii_case("é!http!é", "http", "hxxp"), "é!hxxp!é");
+        assert_eq!(replace_preserving_ascii_case("é!http!é", "http", "hxxp"), "é!hxxp!é");
     }
 }
