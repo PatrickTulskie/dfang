@@ -31,35 +31,47 @@ fn help() {
     println!("usage: dfang <string>");
 }
 
+/// Dots and URL scheme markers are always safe to escape. The "@" and the
+/// bare colons are not, so those stay behind a check: escaping them
+/// unconditionally would chew through prose like "Contact: me" or "C:/tmp".
 fn defang(input: &str) -> String {
-    if has_ipv4(input) {
-        return defang_ipv4(input);
-    } else if has_ipv6(input) {
-        return defang_ipv6(input);
-    } else if has_email(input) {
-        return defang_email(input)
-    } else {
-        return defang_url(input);
-    }
-}
-
-fn defang_url(input: &str) -> String {
     let result = input.replace('.', "[.]");
     let result = replace_ignore_ascii_case(&result, "http", "hxxp");
+    let mut result = result.replace("://", "[://]");
 
-    return result.replace("://", "[://]");
+    if has_email(input) {
+        result = result.replace('@', "[@]");
+    }
+    if has_ipv6(input) {
+        result = bracket_bare_colons(&result);
+    }
+
+    return result;
 }
 
-fn defang_ipv4(input: &str) -> String {
-    return input.replace('.', "[.]");
-}
+/// Escapes colons, skipping the ones inside a "[://]" we just wrote.
+fn bracket_bare_colons(input: &str) -> String {
+    const KEEP: &[u8] = b"[://]";
+    let bytes = input.as_bytes();
+    let mut out = String::with_capacity(input.len());
+    let mut copied = 0;
+    let mut i = 0;
 
-fn defang_ipv6(input: &str) -> String {
-    return input.replace(':', "[:]");
-}
+    while i < bytes.len() {
+        if bytes[i] == b'[' && bytes[i..].starts_with(KEEP) {
+            i += KEEP.len();
+        } else if bytes[i] == b':' {
+            out.push_str(&input[copied..i]);
+            out.push_str("[:]");
+            i += 1;
+            copied = i;
+        } else {
+            i += 1;
+        }
+    }
+    out.push_str(&input[copied..]);
 
-fn defang_email(input: &str) -> String {
-    return input.replace('.', "[.]").replace('@', "[@]");
+    return out;
 }
 
 /// Non-overlapping, leftmost replacement of an ASCII `needle`, ignoring case.
@@ -84,57 +96,24 @@ fn replace_ignore_ascii_case(haystack: &str, needle: &str, to: &str) -> String {
     return out;
 }
 
-/// True if any substring parses as four dot-separated octets.
-fn has_ipv4(input: &str) -> bool {
-    let bytes = input.as_bytes();
-
-    return (0..bytes.len()).any(|i| ipv4_at(&bytes[i..], 0));
-}
-
-fn ipv4_at(bytes: &[u8], octets: usize) -> bool {
-    // Longest octet first, falling back to shorter ones so a leading digit can
-    // be skipped when that is what lines the separator up (e.g. "2550.1.1.1").
-    for len in (1..=3).rev() {
-        if !is_octet(bytes, len) {
-            continue;
-        }
-        if octets == 3 {
-            return true;
-        }
-        if bytes.get(len) == Some(&b'.') && ipv4_at(&bytes[len + 1..], octets + 1) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-fn is_octet(bytes: &[u8], len: usize) -> bool {
-    if bytes.len() < len || !bytes[..len].iter().all(u8::is_ascii_digit) {
-        return false;
-    }
-    if len < 3 {
-        return true;
-    }
-
-    return bytes[..3].iter().fold(0u32, |v, d| v * 10 + (d - b'0') as u32) <= 255;
-}
-
-/// True if the input looks like an IPv6 address. Only ever called once
-/// `has_ipv4` has ruled the input out, so the forms embedding a dotted quad
-/// (`::ffff:1.2.3.4`) can't reach here: what's left is either a `::` run or
-/// eight uncompressed hex groups.
+/// True if the input looks like an IPv6 address. Every compressed form
+/// contains a "::", so only the uncompressed ones need spelling out: eight
+/// hex groups, or six followed by an embedded IPv4 address.
 fn has_ipv6(input: &str) -> bool {
     let bytes = input.as_bytes();
 
     return bytes.windows(2).any(|w| w == b"::")
-        || (0..bytes.len()).any(|i| eight_hex_groups_at(&bytes[i..]));
+        || (0..bytes.len()).any(|i| ipv6_groups_at(&bytes[i..]));
 }
 
-fn eight_hex_groups_at(bytes: &[u8]) -> bool {
+fn ipv6_groups_at(bytes: &[u8]) -> bool {
     let mut i = 0;
 
     for group in 0..8 {
+        // A dotted quad stands in for the last two groups.
+        if group == 6 && dotted_quad_len(&bytes[i..]) > 0 {
+            return true;
+        }
         let len = hex_group_len(&bytes[i..]);
         if len == 0 {
             return false;
@@ -153,6 +132,38 @@ fn eight_hex_groups_at(bytes: &[u8]) -> bool {
 
 fn hex_group_len(bytes: &[u8]) -> usize {
     return bytes.iter().take(4).take_while(|c| c.is_ascii_hexdigit()).count();
+}
+
+/// Length of a leading dotted quad, 0 if there isn't one.
+fn dotted_quad_len(bytes: &[u8]) -> usize {
+    let mut i = 0;
+
+    for octet in 0..4 {
+        if octet > 0 {
+            if bytes.get(i) != Some(&b'.') {
+                return 0;
+            }
+            i += 1;
+        }
+        let len = octet_len(&bytes[i..]);
+        if len == 0 {
+            return 0;
+        }
+        i += len;
+    }
+
+    return i;
+}
+
+/// Length of a leading 0-255 octet, 0 if there isn't one.
+fn octet_len(bytes: &[u8]) -> usize {
+    let digits = bytes.iter().take(3).take_while(|c| c.is_ascii_digit()).count();
+
+    if digits == 3 && bytes[..3].iter().fold(0u32, |v, d| v * 10 + (d - b'0') as u32) > 255 {
+        return 0;
+    }
+
+    return digits;
 }
 
 /// True if the input contains `local@domain.tld`.
@@ -226,26 +237,6 @@ mod tests {
     }
 
     #[test]
-    fn test_ipv4_matching() {
-        assert!(has_ipv4("192.168.1.1"));
-        assert!(has_ipv4("visit 192.168.1.1 now"));
-        assert!(has_ipv4("255.255.255.255"));
-        assert!(has_ipv4("01.02.03.04"));
-        // Unanchored, so an address can start part way through a run of digits:
-        // "999.1.1.1" matches because "99.1.1.1" does.
-        assert!(has_ipv4("2550.1.1.1"));
-        assert!(has_ipv4("999.1.1.1"));
-        assert!(!has_ipv4("1.2550.1.1"));
-        assert!(!has_ipv4("1.2.3"));
-        assert!(!has_ipv4("example.com"));
-        // No such rescue when every group is over 255 and three digits wide,
-        // since a shorter octet would no longer end at a separator.
-        assert!(!has_ipv4("256.256.256.256"));
-        assert!(!has_ipv4("300.400.500.600"));
-        assert!(!has_ipv4("999.999.999.999"));
-    }
-
-    #[test]
     fn test_ipv6_matching() {
         assert!(has_ipv6("::"));
         assert!(has_ipv6("::1"));
@@ -256,6 +247,21 @@ mod tests {
         assert!(!has_ipv6("key: value"));
         assert!(!has_ipv6("C:/Users/test/file.txt"));
         assert!(!has_ipv6("1:2:3:4:5:6:7"));
+        // Six groups plus an embedded IPv4 address.
+        assert!(has_ipv6("a:b:c:d:e:f:1.2.3.4"));
+        assert!(!has_ipv6("a:b:c:d:e:f:1.2.3"));
+        assert!(!has_ipv6("a:b:c:d:e:f:256.1.1.1"));
+    }
+
+    #[test]
+    fn test_dotted_quad_length() {
+        assert_eq!(dotted_quad_len(b"1.2.3.4"), 7);
+        assert_eq!(dotted_quad_len(b"255.255.255.255"), 15);
+        assert_eq!(dotted_quad_len(b"192.168.1.1/rest"), 11);
+        assert_eq!(dotted_quad_len(b"1.2.3"), 0);
+        assert_eq!(dotted_quad_len(b"256.1.1.1"), 0);
+        assert_eq!(dotted_quad_len(b"1000.1.1.1"), 0);
+        assert_eq!(dotted_quad_len(b"example.com"), 0);
     }
 
     #[test]
@@ -276,20 +282,34 @@ mod tests {
         assert_eq!(defang("日本.example.com"), "日本[.]example[.]com");
     }
 
-    /// The first matching branch wins and handles the whole line. `has_ipv6`
-    /// relies on IPv4 being tested first, so reordering these must fail loudly.
+    /// Every applicable rule fires, so a line carrying more than one kind of
+    /// IOC comes out with all of them defanged rather than just the first.
     #[test]
-    fn test_defang_branch_precedence() {
-        // A dotted quad anywhere outranks IPv6, so the colons are left alone.
-        assert_eq!(defang("::ffff:192.168.1.1"), "::ffff:192[.]168[.]1[.]1");
-        assert_eq!(defang("a:b:c:d:e:f:1.2.3.4"), "a:b:c:d:e:f:1[.]2[.]3[.]4");
-        // ...and outranks the URL and email branches, which is why the scheme
-        // and the "@" survive here.
-        assert_eq!(defang("http://192.168.1.1/path"), "http://192[.]168[.]1[.]1/path");
-        assert_eq!(defang("user@192.168.1.1"), "user@192[.]168[.]1[.]1");
-        // IPv6 outranks email.
-        assert_eq!(defang("foo::bar@example.com"), "foo[:][:]bar@example.com");
-        assert_eq!(defang("1:2:3:4:5:6:7:8@example.com"), "1[:]2[:]3[:]4[:]5[:]6[:]7[:]8@example.com");
+    fn test_defang_applies_every_applicable_rule() {
+        assert_eq!(defang("http://192.168.1.1/malware.exe"), "hxxp[://]192[.]168[.]1[.]1/malware[.]exe");
+        assert_eq!(defang("user@192.168.1.1"), "user[@]192[.]168[.]1[.]1");
+        assert_eq!(defang("2001:db8::1 and http://evil.com"), "2001[:]db8[:][:]1 and hxxp[://]evil[.]com");
+        assert_eq!(defang("foo::bar@example.com"), "foo[:][:]bar[@]example[.]com");
+        assert_eq!(defang("1:2:3:4:5:6:7:8@example.com"), "1[:]2[:]3[:]4[:]5[:]6[:]7[:]8[@]example[.]com");
+        assert_eq!(defang("::ffff:192.168.1.1"), "[:][:]ffff[:]192[.]168[.]1[.]1");
+        assert_eq!(defang("a:b:c:d:e:f:1.2.3.4"), "a[:]b[:]c[:]d[:]e[:]f[:]1[.]2[.]3[.]4");
+        assert_eq!(defang("Contact: abuse@corp.com, C2: 5.5.5.5"), "Contact: abuse[@]corp[.]com, C2: 5[.]5[.]5[.]5");
+    }
+
+    /// Colons only get escaped when the line actually holds an IPv6 address,
+    /// so ordinary prose and Windows paths survive intact.
+    #[test]
+    fn test_defang_leaves_incidental_colons_alone() {
+        assert_eq!(defang("key: value"), "key: value");
+        assert_eq!(defang("C:/Users/test/file.txt"), "C:/Users/test/file[.]txt");
+        assert_eq!(defang("mailto:user@example.com"), "mailto:user[@]example[.]com");
+        assert_eq!(defang("seen 10.0.0.5 at 12:30:45"), "seen 10[.]0[.]0[.]5 at 12:30:45");
+    }
+
+    #[test]
+    fn test_defang_does_not_double_escape_the_scheme_separator() {
+        assert_eq!(defang("http://[2001:db8::1]/x"), "hxxp[://][2001[:]db8[:][:]1]/x");
+        assert_eq!(bracket_bare_colons("a[://]b:c"), "a[://]b[:]c");
     }
 
     #[test]
