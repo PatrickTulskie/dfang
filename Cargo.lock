@@ -4,8 +4,8 @@ version = 3
 
 [[package]]
 name = "dfang"
-version = "0.1.5"
+version = "0.2.0"
 
 [[package]]
 name = "rfang"
-version = "0.1.5"
+version = "0.2.0"
