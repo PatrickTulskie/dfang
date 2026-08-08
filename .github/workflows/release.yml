@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and release"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package
+        id: package
+        shell: bash
+        run: |
+          version="${{ inputs.tag || github.ref_name }}"
+          name="dfang-${version}-${{ matrix.target }}"
+          bin="target/${{ matrix.target }}/release"
+          mkdir -p "dist/${name}"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp "${bin}/dfang.exe" "${bin}/rfang.exe" "dist/${name}/"
+          else
+            cp "${bin}/dfang" "${bin}/rfang" "dist/${name}/"
+          fi
+          cp README.md "dist/${name}/"
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "${name}.zip" "${name}" > /dev/null
+            echo "asset=dist/${name}.zip" >> "$GITHUB_OUTPUT"
+          else
+            tar czf "${name}.tar.gz" "${name}"
+            echo "asset=dist/${name}.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ steps.package.outputs.asset }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag || github.ref_name }}" \
+            --verify-tag --generate-notes dist/*
