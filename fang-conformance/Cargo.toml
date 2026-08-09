@@ -1,0 +1,9 @@
+[package]
+name = "fang-conformance"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+dfang = { path = "../dfang" }
+rfang = { path = "../rfang" }

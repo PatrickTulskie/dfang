@@ -1,5 +1,5 @@
 [workspace]
-members=["dfang", "rfang"]
+members=["dfang", "rfang", "fang-conformance"]
 resolver = "2"
 
 [profile.release]
