@@ -5,7 +5,7 @@
 Dates are the crates.io publish dates. Entries before this file existed were
 reconstructed from the git history and the release tags.
 
-## Unreleased
+## 0.3.0 - 2026-08-09
 
 ### Added
 
