@@ -27,3 +27,22 @@ grep hxxp iocs.txt | rfang
 // Take your clipboard, defang it, and copy it again
 pbpaste | dfang | pbcopy
 ```
+
+## Use as a library
+
+Both crates ship a library alongside the binary, so the string processing can be called
+directly from Rust instead of shelling out. Neither has any dependencies and neither does
+any I/O.
+
+```
+cargo add dfang
+cargo add rfang
+```
+
+```rust
+use dfang::defang;
+use rfang::refang;
+
+assert_eq!(defang("http://example.com"), "hxxp[://]example[.]com");
+assert_eq!(refang("hxxp[://]example[.]com"), "http://example.com");
+```
