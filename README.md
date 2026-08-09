@@ -6,25 +6,25 @@ For when you need to quickly make IOCs (email, urls, ip addresses) unclickable a
 
 ## Install
 
-```
+```shell
 cargo install dfang
 cargo install rfang
 ```
 
 ## Usage
 
-```
+```shell
 dfang something@somewhere.com
 rfang something[@]somewhere[.]com
 ```
 
 ...or pipe in from another application
 
-```
-// Extract defanged URLs from a file
+```shell
+# Extract defanged URLs from a file
 grep hxxp iocs.txt | rfang
 
-// Take your clipboard, defang it, and copy it again
+# Take your clipboard, defang it, and copy it again
 pbpaste | dfang | pbcopy
 ```
 
@@ -34,7 +34,7 @@ Both crates ship a library alongside the binary, so the string processing can be
 directly from Rust instead of shelling out. Neither has any dependencies and neither does
 any I/O.
 
-```
+```shell
 cargo add dfang
 cargo add rfang
 ```
