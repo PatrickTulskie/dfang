@@ -21,8 +21,8 @@ rfang something[@]somewhere[.]com
 ...or pipe in from another application
 
 ```shell
-# Extract defanged URLs from a file
-grep hxxp iocs.txt | rfang
+# Extract and refang the defanged URLs in a file
+grep -i hxxp iocs.txt | rfang
 
 # Take your clipboard, defang it, and copy it again
 pbpaste | dfang | pbcopy
