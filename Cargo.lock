@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "dfang"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "fang-conformance"
@@ -16,4 +16,4 @@ dependencies = [
 
 [[package]]
 name = "rfang"
-version = "0.2.0"
+version = "0.3.0"
