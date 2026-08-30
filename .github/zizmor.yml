@@ -2,6 +2,7 @@ rules:
   unpinned-uses:
     config:
       policies:
-        # Every action here is first-party `actions/*`. A tag is enough; hash
-        # pinning would mean bumping a digest by hand on every release.
-        "*": ref-pin
+        # First-party actions only. A tag is enough here; hash pinning would
+        # mean bumping a digest by hand on every release. Anything else keeps
+        # zizmor's default hash-pin requirement.
+        "actions/*": ref-pin
