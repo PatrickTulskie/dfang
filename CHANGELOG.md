@@ -5,6 +5,12 @@
 Dates are the crates.io publish dates. Entries before this file existed were
 reconstructed from the git history and the release tags.
 
+## Unreleased
+
+### Changed
+
+- Both crates declare a minimum supported Rust version of 1.78, tested in CI.
+
 ## 0.3.0 - 2026-08-09
 
 ### Added
