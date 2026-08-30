@@ -1,0 +1,7 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # Every action here is first-party `actions/*`. A tag is enough; hash
+        # pinning would mean bumping a digest by hand on every release.
+        "*": ref-pin
