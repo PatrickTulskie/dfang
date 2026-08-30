@@ -7,6 +7,9 @@
 //! assert_eq!(dfang::defang("http://example.com"), "hxxp[://]example[.]com");
 //! ```
 
+// Explicit `return` is deliberate here; the lint would rewrite it.
+#![allow(clippy::needless_return)]
+
 const LOCAL_PART_SYMBOLS: &[u8] = b"!#$%&'*+/=?^_{|.}~-";
 
 /// Dots and URL scheme markers are always safe to escape. The "@" and the
@@ -66,7 +69,11 @@ fn replace_preserving_ascii_case(haystack: &str, needle: &str, to: &str) -> Stri
         if bytes[i..i + pat.len()].eq_ignore_ascii_case(pat) {
             out.push_str(&haystack[copied..i]);
             for (&from, &to) in bytes[i..i + pat.len()].iter().zip(to.as_bytes()) {
-                out.push(if from.is_ascii_uppercase() { to.to_ascii_uppercase() } else { to } as char);
+                out.push(if from.is_ascii_uppercase() {
+                    to.to_ascii_uppercase()
+                } else {
+                    to
+                } as char);
             }
             i += pat.len();
             copied = i;
@@ -114,7 +121,11 @@ fn ipv6_groups_at(bytes: &[u8]) -> bool {
 }
 
 fn hex_group_len(bytes: &[u8]) -> usize {
-    return bytes.iter().take(4).take_while(|c| c.is_ascii_hexdigit()).count();
+    return bytes
+        .iter()
+        .take(4)
+        .take_while(|c| c.is_ascii_hexdigit())
+        .count();
 }
 
 /// Length of a leading dotted quad, 0 if there isn't one.
@@ -140,9 +151,18 @@ fn dotted_quad_len(bytes: &[u8]) -> usize {
 
 /// Length of a leading 0-255 octet, 0 if there isn't one.
 fn octet_len(bytes: &[u8]) -> usize {
-    let digits = bytes.iter().take(3).take_while(|c| c.is_ascii_digit()).count();
+    let digits = bytes
+        .iter()
+        .take(3)
+        .take_while(|c| c.is_ascii_digit())
+        .count();
 
-    if digits == 3 && bytes[..3].iter().fold(0u32, |v, d| v * 10 + (d - b'0') as u32) > 255 {
+    if digits == 3
+        && bytes[..3]
+            .iter()
+            .fold(0u32, |v, d| v * 10 + (d - b'0') as u32)
+            > 255
+    {
         return 0;
     }
 
@@ -209,7 +229,10 @@ mod tests {
         assert_eq!(defang("http://example.com"), "hxxp[://]example[.]com");
         assert_eq!(defang("https://example.com"), "hxxps[://]example[.]com");
         assert_eq!(defang("example@example.com"), "example[@]example[.]com");
-        assert_eq!(defang("2001:0db8:85a3:0000:0000:8a2e:0370:7334"), "2001[:]0db8[:]85a3[:]0000[:]0000[:]8a2e[:]0370[:]7334");
+        assert_eq!(
+            defang("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
+            "2001[:]0db8[:]85a3[:]0000[:]0000[:]8a2e[:]0370[:]7334"
+        );
         assert_eq!(defang("192.168.1.1"), "192[.]168[.]1[.]1")
     }
 
@@ -271,14 +294,35 @@ mod tests {
     /// IOC comes out with all of them defanged rather than just the first.
     #[test]
     fn test_defang_applies_every_applicable_rule() {
-        assert_eq!(defang("http://192.168.1.1/malware.exe"), "hxxp[://]192[.]168[.]1[.]1/malware[.]exe");
+        assert_eq!(
+            defang("http://192.168.1.1/malware.exe"),
+            "hxxp[://]192[.]168[.]1[.]1/malware[.]exe"
+        );
         assert_eq!(defang("user@192.168.1.1"), "user[@]192[.]168[.]1[.]1");
-        assert_eq!(defang("2001:db8::1 and http://evil.com"), "2001[:]db8[:][:]1 and hxxp[://]evil[.]com");
-        assert_eq!(defang("foo::bar@example.com"), "foo[:][:]bar[@]example[.]com");
-        assert_eq!(defang("1:2:3:4:5:6:7:8@example.com"), "1[:]2[:]3[:]4[:]5[:]6[:]7[:]8[@]example[.]com");
-        assert_eq!(defang("::ffff:192.168.1.1"), "[:][:]ffff[:]192[.]168[.]1[.]1");
-        assert_eq!(defang("a:b:c:d:e:f:1.2.3.4"), "a[:]b[:]c[:]d[:]e[:]f[:]1[.]2[.]3[.]4");
-        assert_eq!(defang("Contact: abuse@corp.com, C2: 5.5.5.5"), "Contact: abuse[@]corp[.]com, C2: 5[.]5[.]5[.]5");
+        assert_eq!(
+            defang("2001:db8::1 and http://evil.com"),
+            "2001[:]db8[:][:]1 and hxxp[://]evil[.]com"
+        );
+        assert_eq!(
+            defang("foo::bar@example.com"),
+            "foo[:][:]bar[@]example[.]com"
+        );
+        assert_eq!(
+            defang("1:2:3:4:5:6:7:8@example.com"),
+            "1[:]2[:]3[:]4[:]5[:]6[:]7[:]8[@]example[.]com"
+        );
+        assert_eq!(
+            defang("::ffff:192.168.1.1"),
+            "[:][:]ffff[:]192[.]168[.]1[.]1"
+        );
+        assert_eq!(
+            defang("a:b:c:d:e:f:1.2.3.4"),
+            "a[:]b[:]c[:]d[:]e[:]f[:]1[.]2[.]3[.]4"
+        );
+        assert_eq!(
+            defang("Contact: abuse@corp.com, C2: 5.5.5.5"),
+            "Contact: abuse[@]corp[.]com, C2: 5[.]5[.]5[.]5"
+        );
     }
 
     /// Colons only get escaped when the line actually holds an IPv6 address,
@@ -287,20 +331,32 @@ mod tests {
     fn test_defang_leaves_incidental_colons_alone() {
         assert_eq!(defang("key: value"), "key: value");
         assert_eq!(defang("C:/Users/test/file.txt"), "C:/Users/test/file[.]txt");
-        assert_eq!(defang("mailto:user@example.com"), "mailto:user[@]example[.]com");
-        assert_eq!(defang("seen 10.0.0.5 at 12:30:45"), "seen 10[.]0[.]0[.]5 at 12:30:45");
+        assert_eq!(
+            defang("mailto:user@example.com"),
+            "mailto:user[@]example[.]com"
+        );
+        assert_eq!(
+            defang("seen 10.0.0.5 at 12:30:45"),
+            "seen 10[.]0[.]0[.]5 at 12:30:45"
+        );
     }
 
     #[test]
     fn test_defang_does_not_double_escape_the_scheme_separator() {
-        assert_eq!(defang("http://[2001:db8::1]/x"), "hxxp[://][2001[:]db8[:][:]1]/x");
+        assert_eq!(
+            defang("http://[2001:db8::1]/x"),
+            "hxxp[://][2001[:]db8[:][:]1]/x"
+        );
         assert_eq!(bracket_bare_colons("a[://]b:c"), "a[://]b[:]c");
     }
 
     #[test]
     fn test_defang_replaces_every_occurrence() {
         assert_eq!(defang("httphttp://a.com"), "hxxphxxp[://]a[.]com");
-        assert_eq!(defang("http://a.com/redir?u=http://b.com"), "hxxp[://]a[.]com/redir?u=hxxp[://]b[.]com");
+        assert_eq!(
+            defang("http://a.com/redir?u=http://b.com"),
+            "hxxp[://]a[.]com/redir?u=hxxp[://]b[.]com"
+        );
         assert_eq!(defang("HtTpS://MiXeD.CoM"), "HxXpS[://]MiXeD[.]CoM");
     }
 
@@ -312,15 +368,33 @@ mod tests {
 
     #[test]
     fn test_replace_preserving_ascii_case() {
-        assert_eq!(replace_preserving_ascii_case("http", "http", "hxxp"), "hxxp");
-        assert_eq!(replace_preserving_ascii_case("HTTP", "http", "hxxp"), "HXXP");
-        assert_eq!(replace_preserving_ascii_case("Http", "http", "hxxp"), "Hxxp");
-        assert_eq!(replace_preserving_ascii_case("HtTp", "http", "hxxp"), "HxXp");
-        assert_eq!(replace_preserving_ascii_case("a http b HTTP c", "http", "hxxp"), "a hxxp b HXXP c");
+        assert_eq!(
+            replace_preserving_ascii_case("http", "http", "hxxp"),
+            "hxxp"
+        );
+        assert_eq!(
+            replace_preserving_ascii_case("HTTP", "http", "hxxp"),
+            "HXXP"
+        );
+        assert_eq!(
+            replace_preserving_ascii_case("Http", "http", "hxxp"),
+            "Hxxp"
+        );
+        assert_eq!(
+            replace_preserving_ascii_case("HtTp", "http", "hxxp"),
+            "HxXp"
+        );
+        assert_eq!(
+            replace_preserving_ascii_case("a http b HTTP c", "http", "hxxp"),
+            "a hxxp b HXXP c"
+        );
         assert_eq!(replace_preserving_ascii_case("", "http", "hxxp"), "");
         assert_eq!(replace_preserving_ascii_case("htt", "http", "hxxp"), "htt");
         // The copy offsets are byte indices, so they have to land on char
         // boundaries when a match sits between multibyte characters.
-        assert_eq!(replace_preserving_ascii_case("é!http!é", "http", "hxxp"), "é!hxxp!é");
+        assert_eq!(
+            replace_preserving_ascii_case("é!http!é", "http", "hxxp"),
+            "é!hxxp!é"
+        );
     }
 }

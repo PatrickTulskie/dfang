@@ -7,6 +7,9 @@
 //! assert_eq!(rfang::refang("hxxp[://]example[.]com"), "http://example.com");
 //! ```
 
+// Explicit `return` is deliberate here; the lint would rewrite it.
+#![allow(clippy::needless_return)]
+
 /// Peels off a single layer of defanging. Input that was never defanged comes
 /// back unchanged.
 pub fn refang(input: &str) -> String {
@@ -31,7 +34,11 @@ fn replace_preserving_ascii_case(haystack: &str, needle: &str, to: &str) -> Stri
         if bytes[i..i + pat.len()].eq_ignore_ascii_case(pat) {
             out.push_str(&haystack[copied..i]);
             for (&from, &to) in bytes[i..i + pat.len()].iter().zip(to.as_bytes()) {
-                out.push(if from.is_ascii_uppercase() { to.to_ascii_uppercase() } else { to } as char);
+                out.push(if from.is_ascii_uppercase() {
+                    to.to_ascii_uppercase()
+                } else {
+                    to
+                } as char);
             }
             i += pat.len();
             copied = i;
@@ -53,7 +60,10 @@ mod tests {
         assert_eq!(refang("hxxp[://]example[.]com"), "http://example.com");
         assert_eq!(refang("hxxps[://]example[.]com"), "https://example.com");
         assert_eq!(refang("example[@]example[.]com"), "example@example.com");
-        assert_eq!(refang("2001[:]0db8[:]85a3[:]0000[:]0000[:]8a2e[:]0370[:]7334"), "2001:0db8:85a3:0000:0000:8a2e:0370:7334");
+        assert_eq!(
+            refang("2001[:]0db8[:]85a3[:]0000[:]0000[:]8a2e[:]0370[:]7334"),
+            "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        );
         assert_eq!(refang("192[.]168[.]1[.]1"), "192.168.1.1")
     }
 
@@ -73,14 +83,20 @@ mod tests {
 
     #[test]
     fn test_refang_replaces_every_occurrence() {
-        assert_eq!(refang("hxxp[://]a[.]b hxxp[://]c[.]d"), "http://a.b http://c.d");
+        assert_eq!(
+            refang("hxxp[://]a[.]b hxxp[://]c[.]d"),
+            "http://a.b http://c.d"
+        );
         assert_eq!(refang("[.][:][@][://]"), ".:@://");
     }
 
     /// Defanging twice nests the brackets; refanging peels off one layer.
     #[test]
     fn test_refang_unwraps_a_single_layer() {
-        assert_eq!(refang("hxxp[[://]]already[[.]]defanged"), "http[://]already[.]defanged");
+        assert_eq!(
+            refang("hxxp[[://]]already[[.]]defanged"),
+            "http[://]already[.]defanged"
+        );
     }
 
     #[test]
@@ -91,14 +107,29 @@ mod tests {
 
     #[test]
     fn test_replace_preserving_ascii_case() {
-        assert_eq!(replace_preserving_ascii_case("hxxp", "hxxp", "http"), "http");
-        assert_eq!(replace_preserving_ascii_case("HXXP", "hxxp", "http"), "HTTP");
-        assert_eq!(replace_preserving_ascii_case("Hxxp", "hxxp", "http"), "Http");
-        assert_eq!(replace_preserving_ascii_case("a hxxp b HXXP c", "hxxp", "http"), "a http b HTTP c");
+        assert_eq!(
+            replace_preserving_ascii_case("hxxp", "hxxp", "http"),
+            "http"
+        );
+        assert_eq!(
+            replace_preserving_ascii_case("HXXP", "hxxp", "http"),
+            "HTTP"
+        );
+        assert_eq!(
+            replace_preserving_ascii_case("Hxxp", "hxxp", "http"),
+            "Http"
+        );
+        assert_eq!(
+            replace_preserving_ascii_case("a hxxp b HXXP c", "hxxp", "http"),
+            "a http b HTTP c"
+        );
         assert_eq!(replace_preserving_ascii_case("", "hxxp", "http"), "");
         assert_eq!(replace_preserving_ascii_case("hxx", "hxxp", "http"), "hxx");
         // The copy offsets are byte indices, so they have to land on char
         // boundaries when a match sits between multibyte characters.
-        assert_eq!(replace_preserving_ascii_case("é!hxxp!é", "hxxp", "http"), "é!http!é");
+        assert_eq!(
+            replace_preserving_ascii_case("é!hxxp!é", "hxxp", "http"),
+            "é!http!é"
+        );
     }
 }

@@ -1,6 +1,6 @@
 use rfang::refang;
 use std::env;
-use std::io::{self, Read, IsTerminal};
+use std::io::{self, IsTerminal, Read};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
