@@ -6,6 +6,19 @@ For when you need to quickly make IOCs (email, urls, ip addresses) unclickable a
 
 ## Install
 
+With Homebrew, on macOS or Linux:
+
+```shell
+brew tap PatrickTulskie/tap
+brew trust PatrickTulskie/tap
+brew install dfang
+```
+
+One formula carries both binaries. Homebrew 6 won't load a third-party tap until
+it's trusted, which is what the `brew trust` line is for.
+
+With cargo:
+
 ```shell
 cargo install dfang
 cargo install rfang
