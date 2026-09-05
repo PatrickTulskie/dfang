@@ -9,6 +9,10 @@ reconstructed from the git history and the release tags.
 
 ### Changed
 
+- Piped input is written through a buffer instead of flushing stdout on every
+  line, which roughly doubles throughput on large inputs. Output is unchanged.
+- A downstream reader closing early (`dfang < iocs.txt | head -1`) now ends the
+  run quietly instead of panicking with a broken-pipe message.
 - Both crates declare a minimum supported Rust version of 1.78, tested in CI.
 - Readme points at the Homebrew tap, which has carried a formula for both
   binaries since 0.3.0.
