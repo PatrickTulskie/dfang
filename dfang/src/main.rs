@@ -3,18 +3,20 @@
 
 use dfang::defang;
 use std::env;
-use std::io::{self, BufWriter, IsTerminal, Read, Write};
+use std::io::{self, BufRead, BufWriter, IsTerminal, Write};
 use std::process;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().skip(1).collect();
+    let line_buffered = args.iter().any(|a| a == "--line-buffered");
+    args.retain(|a| a != "--line-buffered");
 
-    if args.len() < 2 {
+    if args.is_empty() {
         if io::stdin().is_terminal() {
             help();
-        } else if let Err(err) = defang_stdin() {
+        } else if let Err(err) = defang_stdin(line_buffered) {
             // The reader hanging up (`dfang < big.txt | head -1`) is not an error.
             if err.kind() == io::ErrorKind::BrokenPipe {
                 return;
@@ -23,21 +25,27 @@ fn main() {
             process::exit(1);
         }
     } else {
-        for i in 1..args.len() {
-            println!("{}", defang(&args[i]));
+        for arg in &args {
+            println!("{}", defang(arg));
         }
     }
 }
 
-/// Buffered so stdout is flushed once per block rather than once per line;
-/// on big inputs the per-line flushes were most of the runtime.
-fn defang_stdin() -> io::Result<()> {
-    let mut input = String::new();
-    io::stdin().read_to_string(&mut input)?;
-
+/// Lines are handled as they arrive, so a `tail -f` can be piped in and memory
+/// is bounded by the longest line. Output is flushed once per block, or once
+/// per line when asked, since a block can sit unseen while the input is slow.
+fn defang_stdin(line_buffered: bool) -> io::Result<()> {
+    let mut input = io::stdin().lock();
     let mut out = BufWriter::new(io::stdout().lock());
-    for line in input.lines() {
-        writeln!(out, "{}", defang(line))?;
+    let mut line = String::new();
+
+    while input.read_line(&mut line)? > 0 {
+        // Same terminator handling as `str::lines`, so output is unchanged.
+        writeln!(out, "{}", defang(line.lines().next().unwrap_or("")))?;
+        if line_buffered {
+            out.flush()?;
+        }
+        line.clear();
     }
 
     return out.flush();
@@ -45,5 +53,8 @@ fn defang_stdin() -> io::Result<()> {
 
 fn help() {
     println!("dfang v{}", VERSION);
-    println!("usage: dfang <string>");
+    println!("usage: dfang <string>...");
+    println!("       dfang [--line-buffered] < input");
+    println!();
+    println!("  --line-buffered  flush after every line instead of every block");
 }

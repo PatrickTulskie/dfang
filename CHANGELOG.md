@@ -7,8 +7,16 @@ reconstructed from the git history and the release tags.
 
 ## Unreleased
 
+### Added
+
+- `--line-buffered` flushes output after every line instead of every block,
+  for `tail -f` style input or an interactive reader downstream.
+
 ### Changed
 
+- Piped input is handled line by line as it arrives instead of being read to
+  the end first, so a `tail -f` can be piped in and memory is bounded by the
+  longest line rather than the whole input.
 - Piped input is written through a buffer instead of flushing stdout on every
   line, which roughly doubles throughput on large inputs. Output is unchanged.
 - A downstream reader closing early (`dfang < iocs.txt | head -1`) now ends the

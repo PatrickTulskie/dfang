@@ -39,7 +39,14 @@ grep -i hxxp iocs.txt | rfang
 
 # Take your clipboard, defang it, and copy it again
 pbpaste | dfang | pbcopy
+
+# Defang a log as it grows
+tail -f app.log | dfang --line-buffered
 ```
+
+Piped input is handled line by line as it arrives. Output is flushed in blocks,
+which is fastest for big files; `--line-buffered` flushes after every line for
+when the input trickles in or the next thing in the pipeline is interactive.
 
 ## Use as a library
 
